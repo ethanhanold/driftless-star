@@ -59,3 +59,8 @@ So the layering is:
 
 - `container/apptainer_submit.sub`
   A helper submit file for image-building experiments.
+
+
+## Official Documentation
+
+Refer to the official docs at `https://htcondor.org/documentation/htcondor.html` for further questions or concerns

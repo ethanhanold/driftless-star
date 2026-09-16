@@ -16,6 +16,13 @@ vmec-jax = ">=0.0.4,<0.0.5"
 [feature.vmec-jax.tasks.stage-1-vmec]
 cmd = "vmec_jax ../inputs/quick_run/vmec_input.HSX_vacuum_ns201_quickrun --output ../outputs/quick_run/stage1_equilibrium/wout_HSX_vacuum_ns201_quickrun.nc"
 
+[feature.stage1-tests.dependencies]
+python = ">=3.11,<3.14"
+pytest = ">=8,<9"
+numpy = ">=2,<3"
+xarray = ">=2025.1,<2026"
+netcdf4 = ">=1.7,<2"
+
 [feature.desc.dependencies]
 desc-opt = ">=0.17.1,<0.18"
 
@@ -90,6 +97,7 @@ platforms = ["linux-64", "linux-aarch64", "osx-arm64"]
 platforms = ["linux-64-cuda"]
 
 [environments]
+stage-1-tests = {features = ["stage1-tests", "cpu"], no-default-feature = true }
 stage-1-vmec = {features = ["vmec-jax", "cpu"], no-default-feature = true }
 stage-1-vmec-gpu = {features = ["vmec-jax", "cuda"], no-default-feature = true }
 stage-1-desc = {features = ["desc", "cpu"], no-default-feature = true }

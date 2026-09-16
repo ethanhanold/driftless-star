@@ -310,8 +310,45 @@ See [guide](../guide.md#container-architecture) for full architecture details.
 
 ## Tests (Phase 2)
 
-> [!TODO]
-> Write unit, regression, and integration tests. See [guide](../guide.md#writing-tests) for examples.
+Run these commands from the repository root with Pixi installed. On a cluster,
+install the test environment and run solver-backed tests on allocated compute.
+
+```bash
+pixi install --manifest-path stages/pixi.toml -e stage-1-tests --locked
+
+# Run one case in the production Docker image, then test its output outside the image.
+pixi run --manifest-path stages/pixi.toml -e stage-1-tests --locked \
+  python -m pytest tests/stage1-equilibrium/test_physics.py \
+  --stage1-run vmec-jax --stage1-case minimal_seed_nfp2 -v
+
+# Test an existing wout without starting a solver or container.
+pixi run --manifest-path stages/pixi.toml -e stage-1-tests --locked \
+  python -m pytest tests/stage1-equilibrium/test_physics.py \
+  --stage1-wout path/to/wout.nc -v
+
+# Use a native Apptainer solver image on allocated GPU compute.
+pixi run --manifest-path stages/pixi.toml -e stage-1-tests --locked \
+  python -m pytest tests/stage1-equilibrium/test_physics.py \
+  --stage1-run vmec-jax --stage1-case minimal_seed_nfp2 \
+  --stage1-runtime apptainer --stage1-device gpu \
+  --stage1-image /staging/YOUR_STAGING_DIR/stage-1-vmec-gpu.sif -v
+```
+
+Repeat `--stage1-case` to select several cases, or omit it with `--stage1-run`
+to run every `input.*` case in `inputs/stage1-tests/`. Repeat `--stage1-wout` to
+test several existing files. The two modes are mutually exclusive. Without
+either mode, the physics tests are skipped.
+
+Fresh runs retain `wout.nc`, an input copy, run settings, the container command,
+and `solver.log` under `outputs/stage1-tests/vmec-jax/<case>/run-*/`.
+Use `--stage1-output-dir PATH` to change the output root and `--stage1-image IMAGE`
+to select a specific Docker image, native Apptainer SIF, or Apptainer ORAS URI.
+The repository and output directory are mounted into the solver container;
+pytest stays in the separate `stage-1-tests` environment.
+
+Inside an allocated HTCondor or Slurm job, use the same command with the
+repository, inputs, test environment, and container runtime available, and retain
+the output directory and pytest exit status; these commands do not submit jobs.
 
 ---
 

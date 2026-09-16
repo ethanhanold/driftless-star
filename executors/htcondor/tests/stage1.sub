@@ -1,0 +1,58 @@
+# Submit an autonomous batch test from the repository root.
+# Defaults run vmec_jax on every inputs/stage1-tests/input.* case, sequentially
+# in one CPU job. Case names are the part after "input.".
+#   mkdir -p outputs/stage1-tests/htcondor
+#   condor_submit executors/htcondor/tests/stage1.sub
+# Run one case, or a comma-separated selection (no spaces):
+#   condor_submit executors/htcondor/tests/stage1.sub test_case=w7x
+#   condor_submit executors/htcondor/tests/stage1.sub test_case=w7x,ncsx
+# Add device=gpu to request a GPU. To override the solver image:
+#   condor_submit executors/htcondor/tests/stage1.sub solver_image=/staging/YOUR_DIR/vmec.sif
+#
+# Set test_case, device, and solver_image below or override them with condor_submit.
+# HTCondor invokes run_stage1.sh automatically with those arguments. The job sets
+# up the environment, runs pytest, archives results, and exits without user input.
+#
+# No parent Snakemake image is needed: pytest launches the solver via Apptainer.
+# Results and scheduler logs return to outputs/stage1-tests/htcondor/.
+
+if ! defined test_case
+    test_case = all
+endif
+if ! defined device
+    device = cpu
+endif
+if ! defined solver_image
+    solver_image = oras://ghcr.io/driftless-star/driftless-star:apptainer-stage-1-vmec-$(device)
+endif
+
+universe = vanilla
+executable = /bin/bash
+transfer_executable = False
+arguments = "executors/htcondor/tests/run_stage1.sh '$(test_case)' '$(device)' '$(solver_image)'"
+
+requirements = (HasCHTCStaging == true) && (HasSingularity == true) && (Arch == "X86_64")
+request_cpus = 8
+request_memory = 32GB
+request_disk = 50GB
+gpu_count = ifThenElse("$(device)" == "gpu", 1, 0)
+request_gpus = $INT(gpu_count)
+
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+preserve_relative_paths = True
+transfer_input_files = executors/htcondor/tests/run_stage1.sh, \
+    stages/pixi.toml, stages/pixi.lock, \
+    stages/stage1-equilibrium/run_vmec_jax.py, \
+    tests/stage1-equilibrium/conftest.py, tests/stage1-equilibrium/test_physics.py, \
+    inputs/stage1-tests
+transfer_output_files = stage1-results.tar.gz
+transfer_output_remaps = "stage1-results.tar.gz=outputs/stage1-tests/htcondor/$(ClusterId).$(ProcId).tar.gz"
+
+log = outputs/stage1-tests/htcondor/$(ClusterId).$(ProcId).log
+output = outputs/stage1-tests/htcondor/$(ClusterId).$(ProcId).out
+error = outputs/stage1-tests/htcondor/$(ClusterId).$(ProcId).err
+stream_output = True
+stream_error = True
+
+queue
